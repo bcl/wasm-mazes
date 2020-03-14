@@ -9,13 +9,13 @@ Canvas drawing reference - https://www.w3schools.com/tags/ref_canvas.asp
 
 import (
 	"fmt"
+	"math/rand"
 	"syscall/js"
+	"time"
 )
 
-// Global channel to keep the application running
-
 var (
-	done   chan bool
+	done   chan bool // Global channel to keep the application running
 	width  float64
 	height float64
 	canvas Canvas
@@ -76,8 +76,32 @@ type Cell struct {
 	walls     map[direction]bool
 }
 
-// OpenNeighbors?
-// ClosedNeighbors?
+// Link opens the walls in the direction indicated
+func (c *Cell) Link(dir direction) bool {
+	if _, ok := c.neighbors[dir]; !ok {
+		return false
+	}
+
+	switch dir {
+	case North:
+		c.walls[North] = false
+		c.neighbors[North].walls[South] = false
+		return true
+	case South:
+		c.walls[South] = false
+		c.neighbors[South].walls[North] = false
+		return true
+	case East:
+		c.walls[East] = false
+		c.neighbors[East].walls[West] = false
+		return true
+	case West:
+		c.walls[West] = false
+		c.neighbors[West].walls[East] = false
+		return true
+	}
+	return false
+}
 
 // Grid holds the details of a maze
 type Grid struct {
@@ -145,7 +169,29 @@ func (g *Grid) Neighbor(row, col int, dir direction) (*Cell, bool) {
 	}
 }
 
-func binaryTreeMaze(grid *Grid) {
+func binaryTreeMaze(maze *Grid) {
+	// Visit all the cells
+	for row := 0; row < maze.rows; row++ {
+		for col := 0; col < maze.cols; col++ {
+			// Get the north and east neighbors, if allowed
+			var neighbors []direction
+			if _, ok := maze.Neighbor(row, col, North); ok {
+				neighbors = append(neighbors, North)
+			}
+			if _, ok := maze.Neighbor(row, col, East); ok {
+				neighbors = append(neighbors, East)
+			}
+
+			if len(neighbors) == 0 {
+				continue
+			}
+			i := rand.Intn(len(neighbors))
+			d := neighbors[i]
+
+			// Link the current cell to the neighbor
+			maze.grid[row][col].Link(d)
+		}
+	}
 }
 
 // Draw will draw the maze
@@ -154,9 +200,8 @@ func Draw(maze Grid, canvas *Canvas) {
 		for col := 0; col < maze.cols; col++ {
 			// cell size is 20x20
 			var x, y float64
-			x = float64(row) * 20
-			y = float64(col) * 20
-			fmt.Printf("x = %0.0f, y = %0.0f\n", x, y)
+			x = float64(col) * 20
+			y = float64(row) * 20
 
 			c := maze.grid[row][col]
 			if c.walls[North] {
@@ -178,12 +223,13 @@ func Draw(maze Grid, canvas *Canvas) {
 func main() {
 
 	fmt.Println("running...")
-
+	rand.Seed(time.Now().UnixNano())
 	canvas := setupCanvas()
 
 	maze := Grid{}
 	maze.init(10, 10)
 
+	binaryTreeMaze(&maze)
 	Draw(maze, canvas)
 
 	<-done
