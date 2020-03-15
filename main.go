@@ -30,6 +30,8 @@ func (c *Canvas) line(x1, y1, x2, y2 float64) {
 	c.ctx.Call("beginPath")
 	c.ctx.Call("moveTo", x1, y1)
 	c.ctx.Call("lineTo", x2, y2)
+	c.ctx.Set("strokeStyle", "#000000")
+	c.ctx.Set("lineWidth", "1.5")
 	c.ctx.Call("stroke")
 }
 
