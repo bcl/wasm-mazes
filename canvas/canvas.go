@@ -23,6 +23,7 @@ func NewCanvas() *Canvas {
 	canvasEl.Set("width", width)
 	canvasEl.Set("height", height)
 	canvas := Canvas{canvasEl.Call("getContext", "2d"), width, height}
+	canvas.ctx.Set("font", "12px Arial")
 	canvas.CLS()
 	return &canvas
 }
@@ -48,4 +49,8 @@ func (c *Canvas) Arc(x, y, r, sAngle, eAngle float64, dir bool) {
 	c.ctx.Call("beginPath")
 	c.ctx.Call("arc", x, y, r, sAngle, eAngle, dir)
 	c.ctx.Call("stroke")
+}
+
+func (c *Canvas) Print(x, y float64, msg string) {
+	c.ctx.Call("fillText", msg, x, y)
 }

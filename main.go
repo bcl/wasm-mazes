@@ -51,6 +51,7 @@ type Cell struct {
 	row, col  int
 	neighbors map[direction]*Cell
 	walls     map[direction]bool
+	distance  int // distance from entrance
 }
 
 // Link opens the walls in the direction indicated
@@ -80,6 +81,16 @@ func (c *Cell) Link(dir direction) bool {
 	return false
 }
 
+func (c *Cell) Linked() (linked []*Cell) {
+	for _, d := range []direction{North, South, East, West} {
+		if c.walls[d] == false {
+			linked = append(linked, c.neighbors[d])
+		}
+	}
+
+	return linked
+}
+
 // Grid holds the details of a maze
 type Grid struct {
 	rows, cols int
@@ -97,7 +108,7 @@ func (g *Grid) init(rows, cols int) {
 		for col := 0; col < g.cols; col++ {
 			n := make(map[direction]*Cell, 4)
 			w := make(map[direction]bool, 4)
-			g.grid[row][col] = &Cell{row, col, n, w}
+			g.grid[row][col] = &Cell{row, col, n, w, -1}
 		}
 	}
 
@@ -154,6 +165,10 @@ func Draw(maze Grid, canvas *canvas.Canvas) {
 			var x, y float64
 			x = float64(col) * CellWidth
 			y = float64(row) * CellHeight
+
+			// Turn this on with a flag? Or provide a function callback?
+			// Print distance value for now
+			canvas.Print(x+2, y+14, fmt.Sprintf("%d", maze.grid[row][col].distance))
 
 			c := maze.grid[row][col]
 			if c.walls[North] {
@@ -232,6 +247,31 @@ func RunSidewinder(maze *Grid) {
 	}
 }
 
+// CalculateDijkstra calculates the distance from the entrance to each cell
+func CalculateDijkstra(maze *Grid) {
+	// How do I know this is done?
+
+	frontier := []*Cell{maze.grid[0][0]}
+	frontier[0].distance = 0
+	for {
+		// Get the cell's accessable neighbors
+		neighbors := frontier[0].Linked()
+		for _, n := range neighbors {
+			if n.distance == -1 {
+				n.distance = frontier[0].distance + 1
+				frontier = append(frontier, n)
+			}
+		}
+
+		// Pop the current cell off the frontier list
+		frontier = frontier[1:]
+
+		if len(frontier) == 0 {
+			break
+		}
+	}
+}
+
 func main() {
 
 	fmt.Println("running...")
@@ -239,13 +279,15 @@ func main() {
 	canvas := canvas.NewCanvas()
 
 	maze := Grid{}
-	maze.init(10, 10)
+	maze.init(20, 20)
 
 	switch mazeAlgorithm {
 	case BinaryMaze:
 		BinaryTreeMaze(&maze)
 	case SidewinderMaze:
 		RunSidewinder(&maze)
+
+		CalculateDijkstra(&maze)
 	}
 
 	Draw(maze, canvas)
