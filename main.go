@@ -20,6 +20,7 @@ type algorithm int
 
 const (
 	BinaryMaze algorithm = iota
+	SidewinderMaze
 )
 
 const (
@@ -30,7 +31,7 @@ const (
 func init() {
 	done = make(chan bool)
 
-	mazeAlgorithm = BinaryMaze
+	mazeAlgorithm = SidewinderMaze
 }
 
 type direction int
@@ -115,6 +116,7 @@ func (g *Grid) init(rows, cols int) {
 	}
 }
 
+// TODO This seems like it should be a Cell function, ask it for it's neighbor
 // Neighbor returns the cell in the selected direction from the current row, col position
 func (g *Grid) Neighbor(row, col int, dir direction) (*Cell, bool) {
 	switch dir {
@@ -145,31 +147,6 @@ func (g *Grid) Neighbor(row, col int, dir direction) (*Cell, bool) {
 	}
 }
 
-func BinaryTreeMaze(maze *Grid) {
-	// Visit all the cells
-	for row := 0; row < maze.rows; row++ {
-		for col := 0; col < maze.cols; col++ {
-			// Get the north and east neighbors, if allowed
-			var neighbors []direction
-			if _, ok := maze.Neighbor(row, col, North); ok {
-				neighbors = append(neighbors, North)
-			}
-			if _, ok := maze.Neighbor(row, col, East); ok {
-				neighbors = append(neighbors, East)
-			}
-
-			if len(neighbors) == 0 {
-				continue
-			}
-			i := rand.Intn(len(neighbors))
-			d := neighbors[i]
-
-			// Link the current cell to the neighbor
-			maze.grid[row][col].Link(d)
-		}
-	}
-}
-
 // Draw will draw the maze
 func Draw(maze Grid, canvas *canvas.Canvas) {
 	for row := 0; row < maze.rows; row++ {
@@ -195,6 +172,66 @@ func Draw(maze Grid, canvas *canvas.Canvas) {
 	}
 }
 
+func BinaryTreeMaze(maze *Grid) {
+	// Visit all the cells
+	for row := 0; row < maze.rows; row++ {
+		for col := 0; col < maze.cols; col++ {
+			// Get the north and east neighbors, if allowed
+			var neighbors []direction
+			if _, ok := maze.Neighbor(row, col, North); ok {
+				neighbors = append(neighbors, North)
+			}
+			if _, ok := maze.Neighbor(row, col, East); ok {
+				neighbors = append(neighbors, East)
+			}
+
+			if len(neighbors) == 0 {
+				continue
+			}
+			i := rand.Intn(len(neighbors))
+			d := neighbors[i]
+
+			// Link the current cell to the neighbor
+			maze.grid[row][col].Link(d)
+		}
+	}
+}
+
+// RunSidewinder executes the Sidewinder algorithm
+// Sidewinder visits each location, flips a coin to open the East wall or to
+// open the North wall in a random cell from the last 'run' of cells
+// Book says to start in the SW corner, but I don't think that matters as long as
+// you run it row by row
+func RunSidewinder(maze *Grid) {
+	var run []*Cell
+
+	// Visit all the cells
+	for row := 0; row < maze.rows; row++ {
+		run = []*Cell{}
+		for col := 0; col < maze.cols; col++ {
+			// Top row can only open east, not north
+			if row == 0 {
+				maze.grid[row][col].Link(East)
+				continue
+			}
+			// Add this cell to the run of cells
+			run = append(run, maze.grid[row][col])
+
+			// Flip coin
+			i := rand.Intn(2)
+
+			// True or Right Column (cannot open East), so end the run
+			if i == 1 || col == maze.cols-1 {
+				rm := rand.Intn(len(run))
+				maze.grid[run[rm].row][run[rm].col].Link(North)
+				run = []*Cell{}
+			} else {
+				maze.grid[row][col].Link(East)
+			}
+		}
+	}
+}
+
 func main() {
 
 	fmt.Println("running...")
@@ -207,6 +244,8 @@ func main() {
 	switch mazeAlgorithm {
 	case BinaryMaze:
 		BinaryTreeMaze(&maze)
+	case SidewinderMaze:
+		RunSidewinder(&maze)
 	}
 
 	Draw(maze, canvas)
