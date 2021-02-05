@@ -3,62 +3,20 @@ package main
 // NOTE: Copy wasm_exec.js from the current release of go:
 // cp /path/to/go/misc/wasm/wasm_exec.js .
 
-/*
-Canvas drawing reference - https://www.w3schools.com/tags/ref_canvas.asp
-*/
-
 import (
 	"fmt"
 	"math/rand"
-	"syscall/js"
 	"time"
+
+	"github.com/bcl/wasm-mazes/canvas"
 )
 
 var (
-	done   chan bool // Global channel to keep the application running
-	width  float64
-	height float64
-	canvas Canvas
+	done chan bool // Global channel to keep the application running
 )
-
-// Canvas adds some helper functions to make drawing easier
-type Canvas struct {
-	ctx js.Value
-}
-
-func (c *Canvas) line(x1, y1, x2, y2 float64) {
-	c.ctx.Call("beginPath")
-	c.ctx.Call("moveTo", x1, y1)
-	c.ctx.Call("lineTo", x2, y2)
-	c.ctx.Set("strokeStyle", "#000000")
-	c.ctx.Set("lineWidth", "1.5")
-	c.ctx.Call("stroke")
-}
-
-func (c *Canvas) fillRect(x1, y1, x2, y2 float64) {
-	c.ctx.Call("fillRect", x1, y1, x2, y2)
-}
-
-func (c *Canvas) arc(x, y, r, sAngle, eAngle float64, dir bool) {
-	c.ctx.Call("beginPath")
-	c.ctx.Call("arc", x, y, r, sAngle, eAngle, dir)
-	c.ctx.Call("stroke")
-}
 
 func init() {
 	done = make(chan bool)
-}
-
-func setupCanvas() *Canvas {
-	doc := js.Global().Get("document")
-	canvasEl := doc.Call("getElementById", "mycanvas")
-	width = doc.Get("body").Get("clientWidth").Float()
-	height = doc.Get("body").Get("clientHeight").Float()
-	canvasEl.Set("width", width)
-	canvasEl.Set("height", height)
-	canvas = Canvas{canvasEl.Call("getContext", "2d")}
-	canvas.ctx.Call("clearRect", 0, 0, width, height)
-	return &canvas
 }
 
 type direction int
@@ -197,7 +155,7 @@ func binaryTreeMaze(maze *Grid) {
 }
 
 // Draw will draw the maze
-func Draw(maze Grid, canvas *Canvas) {
+func Draw(maze Grid, canvas *canvas.Canvas) {
 	for row := 0; row < maze.rows; row++ {
 		for col := 0; col < maze.cols; col++ {
 			// cell size is 20x20
@@ -207,16 +165,16 @@ func Draw(maze Grid, canvas *Canvas) {
 
 			c := maze.grid[row][col]
 			if c.walls[North] {
-				canvas.line(x, y, x+20, y)
+				canvas.Line(x, y, x+20, y)
 			}
 			if c.walls[South] {
-				canvas.line(x, y+20, x+20, y+20)
+				canvas.Line(x, y+20, x+20, y+20)
 			}
 			if c.walls[East] {
-				canvas.line(x+20, y, x+20, y+20)
+				canvas.Line(x+20, y, x+20, y+20)
 			}
 			if c.walls[West] {
-				canvas.line(x, y, x, y+20)
+				canvas.Line(x, y, x, y+20)
 			}
 		}
 	}
@@ -226,7 +184,7 @@ func main() {
 
 	fmt.Println("running...")
 	rand.Seed(time.Now().UnixNano())
-	canvas := setupCanvas()
+	canvas := canvas.NewCanvas()
 
 	maze := Grid{}
 	maze.init(10, 10)
