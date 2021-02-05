@@ -12,11 +12,25 @@ import (
 )
 
 var (
-	done chan bool // Global channel to keep the application running
+	done          chan bool // Global channel to keep the application running
+	mazeAlgorithm algorithm
+)
+
+type algorithm int
+
+const (
+	BinaryMaze algorithm = iota
+)
+
+const (
+	CellWidth  = 30
+	CellHeight = 30
 )
 
 func init() {
 	done = make(chan bool)
+
+	mazeAlgorithm = BinaryMaze
 }
 
 type direction int
@@ -30,6 +44,8 @@ const (
 )
 
 // Cell is a single maze location
+// neighbors holds pointers to the neighboring cells
+// walls entries are true if there is a wall, and false if there is an opening to the neighbor
 type Cell struct {
 	row, col  int
 	neighbors map[direction]*Cell
@@ -84,7 +100,7 @@ func (g *Grid) init(rows, cols int) {
 		}
 	}
 
-	// Link all the cells to their neighbors
+	// Link all the cells to their neighbors, and close all the walls
 	for row := 0; row < g.rows; row++ {
 		for col := 0; col < g.cols; col++ {
 			c := g.grid[row][col]
@@ -129,7 +145,7 @@ func (g *Grid) Neighbor(row, col int, dir direction) (*Cell, bool) {
 	}
 }
 
-func binaryTreeMaze(maze *Grid) {
+func BinaryTreeMaze(maze *Grid) {
 	// Visit all the cells
 	for row := 0; row < maze.rows; row++ {
 		for col := 0; col < maze.cols; col++ {
@@ -158,23 +174,22 @@ func binaryTreeMaze(maze *Grid) {
 func Draw(maze Grid, canvas *canvas.Canvas) {
 	for row := 0; row < maze.rows; row++ {
 		for col := 0; col < maze.cols; col++ {
-			// cell size is 20x20
 			var x, y float64
-			x = float64(col) * 20
-			y = float64(row) * 20
+			x = float64(col) * CellWidth
+			y = float64(row) * CellHeight
 
 			c := maze.grid[row][col]
 			if c.walls[North] {
-				canvas.Line(x, y, x+20, y)
+				canvas.Line(x, y, x+CellWidth, y)
 			}
 			if c.walls[South] {
-				canvas.Line(x, y+20, x+20, y+20)
+				canvas.Line(x, y+CellHeight, x+CellWidth, y+CellHeight)
 			}
 			if c.walls[East] {
-				canvas.Line(x+20, y, x+20, y+20)
+				canvas.Line(x+CellWidth, y, x+CellWidth, y+CellHeight)
 			}
 			if c.walls[West] {
-				canvas.Line(x, y, x, y+20)
+				canvas.Line(x, y, x, y+CellHeight)
 			}
 		}
 	}
@@ -189,7 +204,11 @@ func main() {
 	maze := Grid{}
 	maze.init(10, 10)
 
-	binaryTreeMaze(&maze)
+	switch mazeAlgorithm {
+	case BinaryMaze:
+		BinaryTreeMaze(&maze)
+	}
+
 	Draw(maze, canvas)
 
 	<-done
