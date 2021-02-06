@@ -41,8 +41,8 @@ func (c *Canvas) Line(x1, y1, x2, y2 float64) {
 	c.ctx.Call("stroke")
 }
 
-func (c *Canvas) FillRect(x1, y1, x2, y2 float64) {
-	c.ctx.Call("fillRect", x1, y1, x2, y2)
+func (c *Canvas) FillRect(x, y, w, h float64) {
+	c.ctx.Call("fillRect", x, y, w, h)
 }
 
 func (c *Canvas) Arc(x, y, r, sAngle, eAngle float64, dir bool) {
@@ -53,4 +53,15 @@ func (c *Canvas) Arc(x, y, r, sAngle, eAngle float64, dir bool) {
 
 func (c *Canvas) Print(x, y float64, msg string) {
 	c.ctx.Call("fillText", msg, x, y)
+}
+
+func (c *Canvas) Color(color string) {
+	c.ctx.Set("fillStyle", color)
+}
+
+func (c *Canvas) OnClick(f func(this js.Value, args []js.Value) interface{}) {
+	doc := js.Global().Get("document")
+	canvasEl := doc.Call("getElementById", "mycanvas")
+	cb := js.FuncOf(f)
+	canvasEl.Call("addEventListener", "click", cb)
 }

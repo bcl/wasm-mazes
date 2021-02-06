@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"time"
 
+	"syscall/js"
+
 	"github.com/bcl/wasm-mazes/canvas"
 )
 
@@ -160,6 +162,7 @@ func (g *Grid) Neighbor(row, col int, dir direction) (*Cell, bool) {
 
 // Draw will draw the maze
 func Draw(maze Grid, canvas *canvas.Canvas) {
+	canvas.Color("#000000")
 	for row := 0; row < maze.rows; row++ {
 		for col := 0; col < maze.cols; col++ {
 			var x, y float64
@@ -184,6 +187,21 @@ func Draw(maze Grid, canvas *canvas.Canvas) {
 				canvas.Line(x, y, x, y+CellHeight)
 			}
 		}
+	}
+}
+
+func DrawSolution(maze Grid, path []*Cell, canvas *canvas.Canvas) {
+	Draw(maze, canvas)
+	for _, c := range path {
+		var x, y float64
+		x = float64(c.col) * CellWidth
+		y = float64(c.row) * CellHeight
+		fmt.Printf("%0.1f, %0.1f\n", x, y)
+		canvas.Color("#00F0FF")
+		canvas.FillRect(x+1, y+1, CellWidth-2, CellHeight-2)
+		canvas.Color("#000000")
+		canvas.Print(x+2, y+14, fmt.Sprintf("%d", c.distance))
+
 	}
 }
 
@@ -272,6 +290,58 @@ func CalculateDijkstra(maze *Grid) {
 	}
 }
 
+// FindExit finds the path to the exit (in 0,0) when starting at a given point in the maze
+// It returns a slice of Cells to follow.
+func FindExit(maze *Grid, row, col int) (path []*Cell) {
+
+	c := maze.grid[row][col]
+	path = append(path, c)
+	for c.distance != 0 {
+		var next *Cell
+		for _, n := range c.Linked() {
+			if n.distance < c.distance {
+				next = n
+			}
+		}
+		if next == nil {
+			fmt.Printf("STUCK! at %d,%d\n", c.row, c.col)
+			return path
+		}
+		c = next
+		path = append(path, c)
+	}
+
+	return path
+}
+
+type Solver struct {
+	maze   *Grid
+	canvas *canvas.Canvas
+}
+
+func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return nil
+	}
+	x := args[0].Get("offsetX").Int()
+	y := args[0].Get("offsetY").Int()
+
+	// Is it inside the maze?
+	if x > 30*CellWidth || y > 30*CellHeight {
+		return nil
+	}
+
+	col := x / 30
+	row := y / 30
+	fmt.Printf("%d, %d / %d, %d\n", x, y, row, col)
+
+	path := FindExit(s.maze, row, col)
+	s.canvas.CLS()
+	DrawSolution(*s.maze, path, s.canvas)
+
+	return nil
+}
+
 func main() {
 
 	fmt.Println("running...")
@@ -281,16 +351,22 @@ func main() {
 	maze := Grid{}
 	maze.init(20, 20)
 
+	solver := Solver{&maze, canvas}
+
 	switch mazeAlgorithm {
 	case BinaryMaze:
 		BinaryTreeMaze(&maze)
+		Draw(maze, canvas)
 	case SidewinderMaze:
 		RunSidewinder(&maze)
 
 		CalculateDijkstra(&maze)
-	}
+		Draw(maze, canvas)
 
-	Draw(maze, canvas)
+		//		path := FindExit(&maze, 19, 19)
+		//		DrawSolution(maze, path, canvas)
+		canvas.OnClick(solver.SolveMaze)
+	}
 
 	<-done
 }
