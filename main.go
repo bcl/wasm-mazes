@@ -95,8 +95,9 @@ func (c *Cell) Linked() (linked []*Cell) {
 
 // Grid holds the details of a maze
 type Grid struct {
-	rows, cols int
-	grid       [][]*Cell
+	rows, cols  int
+	grid        [][]*Cell
+	maxDistance int
 }
 
 func (g *Grid) init(rows, cols int) {
@@ -160,6 +161,13 @@ func (g *Grid) Neighbor(row, col int, dir direction) (*Cell, bool) {
 	}
 }
 
+func (g *Grid) CellColor(row, col int) string {
+	intensity := (float64(g.maxDistance) - float64(g.grid[row][col].distance)) / float64(g.maxDistance)
+	dark := int(255 * intensity)
+	bright := 128 + int(127*intensity)
+	return fmt.Sprintf("#%02X%02X%02X", dark, bright, dark)
+}
+
 // Draw will draw the maze
 func Draw(maze Grid, canvas *canvas.Canvas) {
 	canvas.Color("#000000")
@@ -168,10 +176,6 @@ func Draw(maze Grid, canvas *canvas.Canvas) {
 			var x, y float64
 			x = float64(col) * CellWidth
 			y = float64(row) * CellHeight
-
-			// Turn this on with a flag? Or provide a function callback?
-			// Print distance value for now
-			canvas.Print(x+2, y+14, fmt.Sprintf("%d", maze.grid[row][col].distance))
 
 			c := maze.grid[row][col]
 			if c.walls[North] {
@@ -186,6 +190,14 @@ func Draw(maze Grid, canvas *canvas.Canvas) {
 			if c.walls[West] {
 				canvas.Line(x, y, x, y+CellHeight)
 			}
+
+			canvas.Color(maze.CellColor(row, col))
+			canvas.FillRect(x+1, y+1, CellWidth-2, CellHeight-2)
+			canvas.Color("#000000")
+
+			// Turn this on with a flag? Or provide a function callback?
+			// Print distance value for now
+			canvas.Print(x+2, y+14, fmt.Sprintf("%d", maze.grid[row][col].distance))
 		}
 	}
 }
@@ -267,11 +279,15 @@ func RunSidewinder(maze *Grid) {
 
 // CalculateDijkstra calculates the distance from the entrance to each cell
 func CalculateDijkstra(maze *Grid) {
-	// How do I know this is done?
-
+	maze.maxDistance = 0
 	frontier := []*Cell{maze.grid[0][0]}
 	frontier[0].distance = 0
 	for {
+		// Keep track of the largest distance
+		if frontier[0].distance > maze.maxDistance {
+			maze.maxDistance = frontier[0].distance
+		}
+
 		// Get the cell's accessable neighbors
 		neighbors := frontier[0].Linked()
 		for _, n := range neighbors {
