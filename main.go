@@ -95,9 +95,10 @@ func (c *Cell) Linked() (linked []*Cell) {
 
 // Grid holds the details of a maze
 type Grid struct {
-	rows, cols  int
-	grid        [][]*Cell
-	maxDistance int
+	rows, cols   int
+	grid         [][]*Cell
+	maxDistance  int
+	farthestCell *Cell
 }
 
 func (g *Grid) init(rows, cols int) {
@@ -166,6 +167,14 @@ func (g *Grid) CellColor(row, col int) string {
 	dark := int(255 * intensity)
 	bright := 128 + int(127*intensity)
 	return fmt.Sprintf("#%02X%02X%02X", dark, bright, dark)
+}
+
+func (g *Grid) ClearDistance() {
+	for row := 0; row < g.rows; row++ {
+		for col := 0; col < g.cols; col++ {
+			g.grid[row][col].distance = -1
+		}
+	}
 }
 
 // Draw will draw the maze
@@ -278,14 +287,15 @@ func RunSidewinder(maze *Grid) {
 }
 
 // CalculateDijkstra calculates the distance from the entrance to each cell
-func CalculateDijkstra(maze *Grid) {
+func CalculateDijkstra(maze *Grid, row, col int) {
 	maze.maxDistance = 0
-	frontier := []*Cell{maze.grid[0][0]}
+	frontier := []*Cell{maze.grid[row][col]}
 	frontier[0].distance = 0
 	for {
 		// Keep track of the largest distance
 		if frontier[0].distance > maze.maxDistance {
 			maze.maxDistance = frontier[0].distance
+			maze.farthestCell = frontier[0]
 		}
 
 		// Get the cell's accessable neighbors
@@ -376,7 +386,13 @@ func main() {
 	case SidewinderMaze:
 		RunSidewinder(&maze)
 
-		CalculateDijkstra(&maze)
+		// Find longest path thru maze
+		CalculateDijkstra(&maze, 0, 0)
+		row := maze.farthestCell.row
+		col := maze.farthestCell.col
+		maze.ClearDistance()
+		CalculateDijkstra(&maze, row, col)
+
 		Draw(maze, canvas)
 
 		//		path := FindExit(&maze, 19, 19)
