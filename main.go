@@ -99,6 +99,8 @@ type Grid struct {
 	grid         [][]*Cell
 	maxDistance  int
 	farthestCell *Cell
+	showDistance bool
+	showColor    bool
 }
 
 func (g *Grid) init(rows, cols int) {
@@ -200,13 +202,17 @@ func Draw(maze Grid, canvas *canvas.Canvas) {
 				canvas.Line(x, y, x, y+CellHeight)
 			}
 
-			canvas.Color(maze.CellColor(row, col))
-			canvas.FillRect(x+1, y+1, CellWidth-2, CellHeight-2)
-			canvas.Color("#000000")
+			// Color the cells based on the distance from the start
+			if maze.showColor {
+				canvas.Color(maze.CellColor(row, col))
+				canvas.FillRect(x+1, y+1, CellWidth-2, CellHeight-2)
+				canvas.Color("#000000")
+			}
 
-			// Turn this on with a flag? Or provide a function callback?
-			// Print distance value for now
-			canvas.Print(x+2, y+14, fmt.Sprintf("%d", maze.grid[row][col].distance))
+			// Print distance value
+			if maze.showDistance {
+				canvas.Print(x+2, y+14, fmt.Sprintf("%d", maze.grid[row][col].distance))
+			}
 		}
 	}
 }
@@ -352,7 +358,7 @@ func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
 	y := args[0].Get("offsetY").Int()
 
 	// Is it inside the maze?
-	if x > s.maze.cols*CellWidth || y > s.maze.rows*CellHeight {
+	if x >= s.maze.cols*CellWidth || y >= s.maze.rows*CellHeight {
 		return nil
 	}
 
@@ -365,6 +371,29 @@ func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
 	DrawSolution(*s.maze, path, s.canvas)
 
 	return nil
+}
+
+func (s *Solver) ToggleDistance(this js.Value, args []js.Value) interface{} {
+	s.maze.showDistance = !s.maze.showDistance
+	s.canvas.CLS()
+	Draw(*s.maze, s.canvas)
+
+	return nil
+}
+
+func (s *Solver) ToggleColor(this js.Value, args []js.Value) interface{} {
+	s.maze.showColor = !s.maze.showColor
+	s.canvas.CLS()
+	Draw(*s.maze, s.canvas)
+
+	return nil
+}
+
+func OnClick(id string, f func(this js.Value, args []js.Value) interface{}) {
+	doc := js.Global().Get("document")
+	canvasEl := doc.Call("getElementById", id)
+	cb := js.FuncOf(f)
+	canvasEl.Call("addEventListener", "click", cb)
 }
 
 func main() {
@@ -397,6 +426,8 @@ func main() {
 		//		path := FindExit(&maze, 19, 19)
 		//		DrawSolution(maze, path, canvas)
 		canvas.OnClick(solver.SolveMaze)
+		OnClick("distance", solver.ToggleDistance)
+		OnClick("color", solver.ToggleColor)
 	}
 
 	<-done
