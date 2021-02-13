@@ -217,7 +217,6 @@ func DrawSolution(maze Grid, path []*Cell, canvas *canvas.Canvas) {
 		var x, y float64
 		x = float64(c.col) * CellWidth
 		y = float64(c.row) * CellHeight
-		fmt.Printf("%0.1f, %0.1f\n", x, y)
 		canvas.Color("#00F0FF")
 		canvas.FillRect(x+1, y+1, CellWidth-2, CellHeight-2)
 		canvas.Color("#000000")
@@ -353,13 +352,13 @@ func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
 	y := args[0].Get("offsetY").Int()
 
 	// Is it inside the maze?
-	if x > 30*CellWidth || y > 30*CellHeight {
+	if x > 20*CellWidth || y > 20*CellHeight {
 		return nil
 	}
 
 	col := x / 30
 	row := y / 30
-	fmt.Printf("%d, %d / %d, %d\n", x, y, row, col)
+	fmt.Printf("Click @ %d, %d / %d, %d\n", x, y, row, col)
 
 	path := FindExit(s.maze, row, col)
 	s.canvas.CLS()
