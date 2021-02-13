@@ -352,7 +352,7 @@ func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
 	y := args[0].Get("offsetY").Int()
 
 	// Is it inside the maze?
-	if x > 20*CellWidth || y > 20*CellHeight {
+	if x > s.maze.cols*CellWidth || y > s.maze.rows*CellHeight {
 		return nil
 	}
 
