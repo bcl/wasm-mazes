@@ -373,6 +373,13 @@ func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+// InitButtons sets the initial state from the html button states
+func (s *Solver) InitButtons() {
+	doc := js.Global().Get("document")
+	s.maze.showDistance = doc.Call("getElementById", "distance").Get("checked").Bool()
+	s.maze.showColor = doc.Call("getElementById", "color").Get("checked").Bool()
+}
+
 func (s *Solver) ToggleDistance(this js.Value, args []js.Value) interface{} {
 	s.maze.showDistance = !s.maze.showDistance
 	s.canvas.CLS()
@@ -391,9 +398,9 @@ func (s *Solver) ToggleColor(this js.Value, args []js.Value) interface{} {
 
 func OnClick(id string, f func(this js.Value, args []js.Value) interface{}) {
 	doc := js.Global().Get("document")
-	canvasEl := doc.Call("getElementById", id)
+	btn := doc.Call("getElementById", id)
 	cb := js.FuncOf(f)
-	canvasEl.Call("addEventListener", "click", cb)
+	btn.Call("addEventListener", "click", cb)
 }
 
 func main() {
@@ -406,6 +413,7 @@ func main() {
 	maze.init(20, 20)
 
 	solver := Solver{&maze, canvas}
+	solver.InitButtons()
 
 	switch mazeAlgorithm {
 	case BinaryMaze:
