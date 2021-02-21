@@ -178,58 +178,6 @@ func (g *Grid) ClearDistance() {
 	}
 }
 
-// Draw will draw the maze
-func Draw(maze Grid, canvas *canvas.Canvas, showDistance, showColor bool) {
-	canvas.Color("#000000")
-	for row := 0; row < maze.rows; row++ {
-		for col := 0; col < maze.cols; col++ {
-			var x, y float64
-			x = float64(col) * CellWidth
-			y = float64(row) * CellHeight
-
-			c := maze.grid[row][col]
-			if c.walls[North] {
-				canvas.Line(x, y, x+CellWidth, y)
-			}
-			if c.walls[South] {
-				canvas.Line(x, y+CellHeight, x+CellWidth, y+CellHeight)
-			}
-			if c.walls[East] {
-				canvas.Line(x+CellWidth, y, x+CellWidth, y+CellHeight)
-			}
-			if c.walls[West] {
-				canvas.Line(x, y, x, y+CellHeight)
-			}
-
-			// Color the cells based on the distance from the start
-			if showColor {
-				canvas.Color(maze.CellColor(row, col))
-				canvas.FillRect(x+1, y+1, CellWidth-2, CellHeight-2)
-				canvas.Color("#000000")
-			}
-
-			// Print distance value
-			if showDistance {
-				canvas.Print(x+2, y+14, fmt.Sprintf("%d", maze.grid[row][col].distance))
-			}
-		}
-	}
-}
-
-func DrawSolution(maze Grid, path []*Cell, canvas *canvas.Canvas, showDistance, showColor bool) {
-	Draw(maze, canvas, showDistance, showColor)
-	for _, c := range path {
-		var x, y float64
-		x = float64(c.col) * CellWidth
-		y = float64(c.row) * CellHeight
-		canvas.Color("#00F0FF")
-		canvas.FillRect(x+1, y+1, CellWidth-2, CellHeight-2)
-		canvas.Color("#000000")
-		canvas.Print(x+2, y+14, fmt.Sprintf("%d", c.distance))
-
-	}
-}
-
 func BinaryTreeMaze(maze *Grid) {
 	// Visit all the cells
 	for row := 0; row < maze.rows; row++ {
@@ -369,7 +317,58 @@ func (s *Solver) Display() {
 	CalculateDijkstra(s.maze, row, col)
 
 	s.canvas.CLS()
-	Draw(*s.maze, s.canvas, s.showDistance, s.showColor)
+	s.Draw()
+}
+
+// Draw will draw the maze
+func (s *Solver) Draw() {
+	s.canvas.Color("#000000")
+	for row := 0; row < s.maze.rows; row++ {
+		for col := 0; col < s.maze.cols; col++ {
+			var x, y float64
+			x = float64(col) * CellWidth
+			y = float64(row) * CellHeight
+
+			c := s.maze.grid[row][col]
+			if c.walls[North] {
+				s.canvas.Line(x, y, x+CellWidth, y)
+			}
+			if c.walls[South] {
+				s.canvas.Line(x, y+CellHeight, x+CellWidth, y+CellHeight)
+			}
+			if c.walls[East] {
+				s.canvas.Line(x+CellWidth, y, x+CellWidth, y+CellHeight)
+			}
+			if c.walls[West] {
+				s.canvas.Line(x, y, x, y+CellHeight)
+			}
+
+			// Color the cells based on the distance from the start
+			if s.showColor {
+				s.canvas.Color(s.maze.CellColor(row, col))
+				s.canvas.FillRect(x+1, y+1, CellWidth-2, CellHeight-2)
+				s.canvas.Color("#000000")
+			}
+
+			// Print distance value
+			if s.showDistance {
+				s.canvas.Print(x+2, y+14, fmt.Sprintf("%d", s.maze.grid[row][col].distance))
+			}
+		}
+	}
+}
+
+func (s *Solver) DrawSolution(path []*Cell) {
+	s.Draw()
+	for _, c := range path {
+		var x, y float64
+		x = float64(c.col) * CellWidth
+		y = float64(c.row) * CellHeight
+		s.canvas.Color("#00F0FF")
+		s.canvas.FillRect(x+1, y+1, CellWidth-2, CellHeight-2)
+		s.canvas.Color("#000000")
+		s.canvas.Print(x+2, y+14, fmt.Sprintf("%d", c.distance))
+	}
 }
 
 func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
@@ -390,7 +389,7 @@ func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
 
 	path := FindExit(s.maze, row, col)
 	s.canvas.CLS()
-	DrawSolution(*s.maze, path, s.canvas, s.showDistance, s.showColor)
+	s.DrawSolution(path)
 
 	return nil
 }
@@ -417,7 +416,7 @@ func (s *Solver) InitMazeSelection() {
 func (s *Solver) ToggleDistance(this js.Value, args []js.Value) interface{} {
 	s.showDistance = !s.showDistance
 	s.canvas.CLS()
-	Draw(*s.maze, s.canvas, s.showDistance, s.showColor)
+	s.Draw()
 
 	return nil
 }
@@ -425,7 +424,7 @@ func (s *Solver) ToggleDistance(this js.Value, args []js.Value) interface{} {
 func (s *Solver) ToggleColor(this js.Value, args []js.Value) interface{} {
 	s.showColor = !s.showColor
 	s.canvas.CLS()
-	Draw(*s.maze, s.canvas, s.showDistance, s.showColor)
+	s.Draw()
 
 	return nil
 }
