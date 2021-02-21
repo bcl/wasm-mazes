@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"syscall/js"
@@ -350,6 +351,27 @@ type Solver struct {
 	canvas *canvas.Canvas
 }
 
+func (s *Solver) Display() {
+	s.maze.init(20, 20)
+
+	switch mazeAlgorithm {
+	case BinaryMaze:
+		BinaryTreeMaze(s.maze)
+	case SidewinderMaze:
+		RunSidewinder(s.maze)
+	}
+
+	// Find longest path thru maze
+	CalculateDijkstra(s.maze, 0, 0)
+	row := s.maze.farthestCell.row
+	col := s.maze.farthestCell.col
+	s.maze.ClearDistance()
+	CalculateDijkstra(s.maze, row, col)
+
+	s.canvas.CLS()
+	Draw(*s.maze, s.canvas)
+}
+
 func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return nil
@@ -380,6 +402,18 @@ func (s *Solver) InitButtons() {
 	s.maze.showColor = doc.Call("getElementById", "color").Get("checked").Bool()
 }
 
+func (s *Solver) InitMazeSelection() {
+	doc := js.Global().Get("document")
+	mazes := doc.Call("getElementById", "mazes")
+
+	for i, name := range []string{"Binary", "Sidewinder"} {
+		opt := doc.Call("createElement", "option")
+		opt.Set("value", i)
+		opt.Set("innerHTML", name)
+		mazes.Call("appendChild", opt)
+	}
+}
+
 func (s *Solver) ToggleDistance(this js.Value, args []js.Value) interface{} {
 	s.maze.showDistance = !s.maze.showDistance
 	s.canvas.CLS()
@@ -396,11 +430,29 @@ func (s *Solver) ToggleColor(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-func OnClick(id string, f func(this js.Value, args []js.Value) interface{}) {
+func (s *Solver) ChangeMaze(this js.Value, args []js.Value) interface{} {
+	doc := js.Global().Get("document")
+	maze, err := strconv.Atoi(doc.Call("getElementById", "mazes").Get("value").String())
+	if err != nil {
+		fmt.Printf("Error converting value: %s", err)
+		return nil
+	}
+	switch maze {
+	case 0:
+		mazeAlgorithm = BinaryMaze
+	case 1:
+		mazeAlgorithm = SidewinderMaze
+	}
+
+	s.Display()
+	return nil
+}
+
+func OnEvent(event, id string, f func(this js.Value, args []js.Value) interface{}) {
 	doc := js.Global().Get("document")
 	btn := doc.Call("getElementById", id)
 	cb := js.FuncOf(f)
-	btn.Call("addEventListener", "click", cb)
+	btn.Call("addEventListener", event, cb)
 }
 
 func main() {
@@ -410,33 +462,18 @@ func main() {
 	canvas := canvas.NewCanvas()
 
 	maze := Grid{}
-	maze.init(20, 20)
 
 	solver := Solver{&maze, canvas}
 	solver.InitButtons()
+	solver.InitMazeSelection()
 
-	switch mazeAlgorithm {
-	case BinaryMaze:
-		BinaryTreeMaze(&maze)
-		Draw(maze, canvas)
-	case SidewinderMaze:
-		RunSidewinder(&maze)
+	// Setup events
+	OnEvent("change", "mazes", solver.ChangeMaze)
+	OnEvent("click", "distance", solver.ToggleDistance)
+	OnEvent("click", "color", solver.ToggleColor)
+	canvas.OnClick(solver.SolveMaze)
 
-		// Find longest path thru maze
-		CalculateDijkstra(&maze, 0, 0)
-		row := maze.farthestCell.row
-		col := maze.farthestCell.col
-		maze.ClearDistance()
-		CalculateDijkstra(&maze, row, col)
-
-		Draw(maze, canvas)
-
-		//		path := FindExit(&maze, 19, 19)
-		//		DrawSolution(maze, path, canvas)
-		canvas.OnClick(solver.SolveMaze)
-		OnClick("distance", solver.ToggleDistance)
-		OnClick("color", solver.ToggleColor)
-	}
+	solver.Display()
 
 	<-done
 }
