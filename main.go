@@ -100,8 +100,6 @@ type Grid struct {
 	grid         [][]*Cell
 	maxDistance  int
 	farthestCell *Cell
-	showDistance bool
-	showColor    bool
 }
 
 func (g *Grid) init(rows, cols int) {
@@ -181,7 +179,7 @@ func (g *Grid) ClearDistance() {
 }
 
 // Draw will draw the maze
-func Draw(maze Grid, canvas *canvas.Canvas) {
+func Draw(maze Grid, canvas *canvas.Canvas, showDistance, showColor bool) {
 	canvas.Color("#000000")
 	for row := 0; row < maze.rows; row++ {
 		for col := 0; col < maze.cols; col++ {
@@ -204,22 +202,22 @@ func Draw(maze Grid, canvas *canvas.Canvas) {
 			}
 
 			// Color the cells based on the distance from the start
-			if maze.showColor {
+			if showColor {
 				canvas.Color(maze.CellColor(row, col))
 				canvas.FillRect(x+1, y+1, CellWidth-2, CellHeight-2)
 				canvas.Color("#000000")
 			}
 
 			// Print distance value
-			if maze.showDistance {
+			if showDistance {
 				canvas.Print(x+2, y+14, fmt.Sprintf("%d", maze.grid[row][col].distance))
 			}
 		}
 	}
 }
 
-func DrawSolution(maze Grid, path []*Cell, canvas *canvas.Canvas) {
-	Draw(maze, canvas)
+func DrawSolution(maze Grid, path []*Cell, canvas *canvas.Canvas, showDistance, showColor bool) {
+	Draw(maze, canvas, showDistance, showColor)
 	for _, c := range path {
 		var x, y float64
 		x = float64(c.col) * CellWidth
@@ -347,8 +345,10 @@ func FindExit(maze *Grid, row, col int) (path []*Cell) {
 }
 
 type Solver struct {
-	maze   *Grid
-	canvas *canvas.Canvas
+	maze         *Grid
+	canvas       *canvas.Canvas
+	showDistance bool
+	showColor    bool
 }
 
 func (s *Solver) Display() {
@@ -369,7 +369,7 @@ func (s *Solver) Display() {
 	CalculateDijkstra(s.maze, row, col)
 
 	s.canvas.CLS()
-	Draw(*s.maze, s.canvas)
+	Draw(*s.maze, s.canvas, s.showDistance, s.showColor)
 }
 
 func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
@@ -390,7 +390,7 @@ func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
 
 	path := FindExit(s.maze, row, col)
 	s.canvas.CLS()
-	DrawSolution(*s.maze, path, s.canvas)
+	DrawSolution(*s.maze, path, s.canvas, s.showDistance, s.showColor)
 
 	return nil
 }
@@ -398,8 +398,8 @@ func (s *Solver) SolveMaze(this js.Value, args []js.Value) interface{} {
 // InitButtons sets the initial state from the html button states
 func (s *Solver) InitButtons() {
 	doc := js.Global().Get("document")
-	s.maze.showDistance = doc.Call("getElementById", "distance").Get("checked").Bool()
-	s.maze.showColor = doc.Call("getElementById", "color").Get("checked").Bool()
+	s.showDistance = doc.Call("getElementById", "distance").Get("checked").Bool()
+	s.showColor = doc.Call("getElementById", "color").Get("checked").Bool()
 }
 
 func (s *Solver) InitMazeSelection() {
@@ -415,17 +415,17 @@ func (s *Solver) InitMazeSelection() {
 }
 
 func (s *Solver) ToggleDistance(this js.Value, args []js.Value) interface{} {
-	s.maze.showDistance = !s.maze.showDistance
+	s.showDistance = !s.showDistance
 	s.canvas.CLS()
-	Draw(*s.maze, s.canvas)
+	Draw(*s.maze, s.canvas, s.showDistance, s.showColor)
 
 	return nil
 }
 
 func (s *Solver) ToggleColor(this js.Value, args []js.Value) interface{} {
-	s.maze.showColor = !s.maze.showColor
+	s.showColor = !s.showColor
 	s.canvas.CLS()
-	Draw(*s.maze, s.canvas)
+	Draw(*s.maze, s.canvas, s.showDistance, s.showColor)
 
 	return nil
 }
@@ -463,7 +463,7 @@ func main() {
 
 	maze := Grid{}
 
-	solver := Solver{&maze, canvas}
+	solver := Solver{&maze, canvas, false, false}
 	solver.InitButtons()
 	solver.InitMazeSelection()
 
