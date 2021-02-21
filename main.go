@@ -409,6 +409,9 @@ func (s *Solver) InitMazeSelection() {
 		opt := doc.Call("createElement", "option")
 		opt.Set("value", i)
 		opt.Set("innerHTML", name)
+		if i == int(mazeAlgorithm) {
+			opt.Set("selected", "true")
+		}
 		mazes.Call("appendChild", opt)
 	}
 }
